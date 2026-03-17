@@ -27,14 +27,14 @@
 ## 🛠️ 快速开始
 
 ### 方式一：直接运行 EXE (推荐)
-1. 前往 [Releases](https://github.com/yourusername/xiyu-os/releases) 下载最新版的 `XiYuOS.exe`。
+1. 前往 [Releases](https://github.com/zza52/xiyu-os/releases) 下载最新版的 `XiYuOS.exe`。
 2. 双击运行，程序会自动在同级目录生成数据库及上传文件夹。
 3. 浏览器访问 `http://127.0.0.1:5000` 即可。
 
 ### 方式二：开发者模式 (Python)
 1. 克隆仓库：
    ```bash
-   git clone https://github.com/yourusername/xiyu-os.git
+   git clone https://github.com/zza52/xiyu-os.git
    cd xiyu-os
    ```
 2. 安装依赖：
