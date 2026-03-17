@@ -127,6 +127,7 @@ def init_db():
     if 'mc_health' not in columns_u: c.execute("ALTER TABLE users ADD COLUMN mc_health INTEGER DEFAULT 20")
     if 'flight_time_left' not in columns_u: c.execute("ALTER TABLE users ADD COLUMN flight_time_left INTEGER DEFAULT 7200")
     if 'last_flight_reset' not in columns_u: c.execute("ALTER TABLE users ADD COLUMN last_flight_reset TEXT")
+    if 'last_flight_claim' not in columns_u: c.execute("ALTER TABLE users ADD COLUMN last_flight_claim TEXT")
     
     c.execute("CREATE TABLE IF NOT EXISTS mc_server_status (id INTEGER PRIMARY KEY, tps REAL, ram_used INTEGER, ram_total INTEGER, updated_at TEXT)")
     c.execute("CREATE TABLE IF NOT EXISTS mc_shop_items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, icon TEXT, price INTEGER, description TEXT, command TEXT, created_at TEXT)")
@@ -254,15 +255,19 @@ def auth():
     act = data.get('action')
     conn = get_db()
     if act == 'register':
-        if conn.execute("SELECT 1 FROM users WHERE username=?", (data['username'],)).fetchone(): return jsonify({'success': False, 'message': '账号已存在'})
-        dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Generate UID - handle case if it is first user but via register
-        last_u = conn.execute("SELECT MAX(uid) FROM users").fetchone()
-        last_uid = last_u[0] if last_u else None
-        new_uid = (last_uid if last_uid else 10000) + 1
-        conn.execute("INSERT INTO users (username, password, role, uid, qq, bio, lat, lng, created_at) VALUES (?, ?, 'user', ?, ?, '这个人很懒，什么都没写', ?, ?, ?)", (data['username'], data['password'], new_uid, data.get('qq',''), random.uniform(-50, 50), random.uniform(-160, 160), dt))
-        conn.commit()
-        return jsonify({'success': True, 'uid': new_uid})
+        try:
+            if conn.execute("SELECT 1 FROM users WHERE username=?", (data['username'],)).fetchone(): 
+                return jsonify({'success': False, 'message': '账号已存在'})
+            dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            last_u = conn.execute("SELECT MAX(uid) FROM users").fetchone()
+            last_uid = last_u[0] if last_u and last_u[0] is not None else None
+            new_uid = (last_uid if last_uid else 10000) + 1
+            conn.execute("INSERT INTO users (username, password, role, uid, qq, bio, lat, lng, created_at) VALUES (?, ?, 'user', ?, ?, '这个人很懒，什么都没写', ?, ?, ?)", (data['username'], data['password'], new_uid, data.get('qq',''), random.uniform(-50, 50), random.uniform(-160, 160), dt))
+            conn.commit()
+            return jsonify({'success': True, 'uid': new_uid})
+        except Exception as e:
+            print(f"[REG_ERROR] {e}")
+            return jsonify({'success': False, 'message': f'注册失败: {str(e)}'})
     elif act == 'login':
         u = conn.execute("SELECT * FROM users WHERE username=? AND password=?", (data['username'], data['password'])).fetchone()
         if u:
@@ -606,22 +611,22 @@ def mc_flight_claim():
     
     conn = get_db()
     if mc_uuid:
-        u = conn.execute("SELECT username, is_vip, vip_tier, last_flight_reset FROM users WHERE mc_uuid=?", (mc_uuid,)).fetchone()
+        u = conn.execute("SELECT username, is_vip, vip_tier, last_flight_claim FROM users WHERE mc_uuid=?", (mc_uuid,)).fetchone()
     elif 'user' in session:
-        u = conn.execute("SELECT username, is_vip, vip_tier, last_flight_reset FROM users WHERE username=?", (session['user'],)).fetchone()
+        u = conn.execute("SELECT username, is_vip, vip_tier, last_flight_claim FROM users WHERE username=?", (session['user'],)).fetchone()
     else:
         return jsonify({'success': False, 'message': '未登录'})
 
     if not u or not u['is_vip']: return jsonify({'success': False, 'message': '非VIP用户无法领取'})
     username = u['username']
     today = datetime.date.today().isoformat()
-    if u['last_flight_reset'] == today: return jsonify({'success': False, 'message': '今日已领取，请明日再来'})
+    if u['last_flight_claim'] == today: return jsonify({'success': False, 'message': '今日已领取，请明日再来'})
     
     tier = u['vip_tier']
     # Daily storage bonus: Tier 1: 10MB, Tier 2: 30MB, Tier 3: 100MB
     storage_reward = {1: 10*1024*1024, 2: 30*1024*1024, 3: 100*1024*1024}.get(tier, 10*1024*1024)
     
-    conn.execute("UPDATE users SET flight_time_left=7200, storage_limit = storage_limit + ?, last_flight_reset=? WHERE username=?", 
+    conn.execute("UPDATE users SET flight_time_left=7200, storage_limit = storage_limit + ?, last_flight_claim=? WHERE username=?", 
                  (storage_reward, today, username))
     conn.commit()
     return jsonify({'success': True, 'message': f'领取成功！2小时飞行时长已入账，并额外获得 {storage_reward//(1024*1024)}MB 云盘容量奖励'})
