@@ -51,7 +51,6 @@
 - `app.py`: Flask 后端逻辑
 - `templates/`: 网页模板
 - `static/`: 静态资源（CSS, JS, 图像）
-- `minecraft_mod/`: 对应的 Fabric Mod 源码
 
 ---
 
