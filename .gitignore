@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+ENV/
+.env
+
+# Flask/Data
+os_kernel.db
+static/uploads/*
+!static/uploads/.gitkeep
+
+# PyInstaller / Build
+dist/
+build/
+*.spec
+
+# IDE
+.vscode/
+.idea/
+
+# Minecraft Build
+minecraft_mod/fabric/.gradle/
+minecraft_mod/fabric/build/
+minecraft_mod/fabric/out/
+minecraft_mod/spigot/.gradle/
+minecraft_mod/spigot/build/
+minecraft_mod/spigot/out/
+*.jar
